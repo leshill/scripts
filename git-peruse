@@ -1,0 +1,71 @@
+#!/bin/bash
+#
+# Peruse a git branch from a commit to the HEAD in chronological order (oldest
+# to newest). This uses `git rev-list` to find the child commits; read up on
+# the default mode.
+#
+# v0.2 Added support for folks who merge :)
+#
+
+delete_tag() {
+  git tag -d $1
+}
+
+move_to() {
+  verify
+  grep_arg='-A'
+  if [[ $1 == 'prev' ]]; then
+    grep_arg='-B'
+  fi
+  current=`git rev-parse peruse`
+  move_to=`git rev-list peruse-start^..HEAD --reverse | grep $grep_arg 1 $current | grep -v $current`
+  if [[ -z $move_to ]]; then
+    no_more
+  fi
+  sanity_check_1=`git rev-list peruse-start..HEAD | grep $move_to`
+  sanity_check_2=`git rev-parse peruse-start`
+  if [[ -z $sanity_check_1 && $sanity_check_2 != $move_to ]]; then
+    no_more
+  fi
+  tag 'peruse' $move_to
+  show
+}
+
+no_more() {
+  echo "git peruse: nothing more to peruse"
+  exit 0
+}
+
+show() {
+  git show peruse
+}
+
+tag() {
+  git tag -f $1 $2
+}
+
+verify() {
+  if [[ -z  `git rev-parse --quiet --verify peruse-start` || -z  `git rev-parse --quiet --verify peruse` ]]; then
+    echo "git peruse: no peruse found, try 'git peruse start <commit-ish>'"
+    exit 1
+  fi
+}
+
+if [[ $# = 2 && $1 == 'start' ]]; then
+  tag peruse-start $2
+  tag peruse $2
+  show
+elif [[ $# = 1 && $1 == 'prev' ]]; then
+  move_to 'prev'
+elif [[ $# = 1 && $1 == 'next' ]]; then
+  move_to 'next'
+elif [[ $# = 1 && $1 == 'stop' ]]; then
+  verify
+  delete_tag peruse-start
+  delete_tag peruse
+elif [[ $# = 0 ]]; then
+  verify
+  show
+else
+  echo "usage: git peruse [start <commit-ish> | next | prev | stop]"
+fi

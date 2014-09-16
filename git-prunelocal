@@ -1,0 +1,16 @@
+#!/bin/bash
+#
+# Prune local tracking branches that have been removed upstream. Note that `git fetch -prune` will not work on local branches.
+#
+# Author: @leshill
+# https://gist.github.com/leshill/9a1088a17f94cef24831
+
+if [[ $# = 0 ]]; then
+  git branch -vv | grep ' gone]'
+elif [[ $# = 1 && $1 == 'rm' ]]; then
+  git branch -vv | grep ' gone]' | egrep -v '^\*' | cut -f 3 -d ' ' | xargs git branch -D
+else
+  echo "usage: git prunelocal [-r]"
+  echo "  show what will be pruned and the current branch if remote gone"
+  echo "  [rm] remove local tracking branches where the remote is gone, does not remove current branch"
+fi

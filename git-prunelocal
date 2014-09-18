@@ -10,7 +10,7 @@ if [[ $# = 0 ]]; then
 elif [[ $# = 1 && $1 == 'rm' ]]; then
   git branch -vv | grep ' gone]' | egrep -v '^\*' | cut -f 3 -d ' ' | xargs git branch -D
 else
-  echo "usage: git prunelocal [-r]"
+  echo "usage: git prunelocal [rm]"
   echo "  show what will be pruned and the current branch if remote gone"
   echo "  [rm] remove local tracking branches where the remote is gone, does not remove current branch"
 fi

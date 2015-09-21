@@ -1,0 +1,41 @@
+#!/usr/bin/env ruby
+#
+# Show diff from last checkout of this branch
+
+reflog_entries = IO.popen("git reflog").readlines
+current_branch = `git rev-parse --abbrev-ref HEAD`.chop
+
+def extract_sha(reflog)
+  reflog.match(/\A(\w+)/)[1]
+end
+
+from_sha = :not_found
+
+reflog_entries.lazy.map do |reflog|
+  sha = extract_sha(reflog)
+  category = case reflog.chop
+              when /rebase finished:.*#{current_branch}\z/
+                :rebase
+              when /checkout: moving.*#{current_branch}\z/
+                :checkout
+              else
+                nil
+  end
+  [category, sha, reflog]
+end.lazy.reject do |category, sha, reflog|
+  category.nil?
+end.lazy.inject(:none) do |last_sha, (category, sha, reflog)|
+  # Use the second unique rebase or checkout
+  if  [sha, :none].include?(last_sha)
+    sha
+  else
+    from_sha = sha
+    break
+  end
+end
+
+if from_sha == :not_found
+  puts "Unable to find starting SHA"
+else
+  system("git log -p --reverse #{from_sha}..HEAD")
+end
